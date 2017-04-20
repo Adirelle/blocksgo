@@ -2,26 +2,35 @@ package framework
 
 import (
 	"fmt"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
+type GlobalConfig struct {
+	Interval time.Duration `yaml:"interval"`
+}
+
 type preConfig struct {
+	Global GlobalConfig
 	Blocks []map[string]interface{} `yaml:"blocks"`
 }
 
 // Config contains the instances of blocks
 type Config struct {
-	Blocks []*Block
+	Global GlobalConfig
+	Blocks []Block
 }
 
 // Configure loads the configuration and instantiates thee blocks.
-func Configure(yamlConfig []byte, c *Config) (err error) {
+func Configure(yamlConfig []byte, conf *Config) (err error) {
 
 	pre := preConfig{}
 	if err = yaml.Unmarshal(yamlConfig, &pre); err != nil {
 		return
 	}
+
+	conf.Global = pre.Global
 
 	for _, bc := range pre.Blocks {
 		namei, exists := bc["type"]
@@ -33,7 +42,7 @@ func Configure(yamlConfig []byte, c *Config) (err error) {
 			return fmt.Errorf("Block type must be a string")
 		}
 
-		var blk *Block
+		var blk Block
 		if blk, err = newBlockInstance(name); err != nil {
 			return
 		}
@@ -47,7 +56,7 @@ func Configure(yamlConfig []byte, c *Config) (err error) {
 			return
 		}
 
-		c.Blocks = append(c.Blocks, blk)
+		conf.Blocks = append(conf.Blocks, blk)
 	}
 
 	return

@@ -1,0 +1,8 @@
+global:
+    interval: 1s
+blocks:
+    - 
+        type: time
+        interval: 5s
+        format: "2006-01-02 15:04"
+    

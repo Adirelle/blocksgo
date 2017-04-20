@@ -1,30 +1,24 @@
 package framework
 
-import (
-	"fmt"
-	"reflect"
-)
+import "fmt"
 
-var registry = make(map[string]reflect.Type)
+type MakeFunc func() Block
+
+var registry = make(map[string]MakeFunc)
 
 // RegistryBlockType registers a block struct with a name
-func RegistryBlockType(name string, ptr *Block) {
+func RegistryBlockType(name string, make MakeFunc) {
 	if _, exists := registry[name]; exists {
 		panic(fmt.Sprintf("Block type %s already exists", name))
 	}
-	registry[name] = reflect.TypeOf(ptr).Elem()
+	registry[name] = make
 }
 
-func newBlockInstance(name string) (*Block, error) {
-	t, exists := registry[name]
+func newBlockInstance(name string) (Block, error) {
+	make, exists := registry[name]
 	if !exists {
 		return nil, fmt.Errorf("Unknown block type %s", name)
 	}
 
-	b, ok := reflect.Zero(t).Interface().(Block)
-	if !ok {
-		return nil, fmt.Errorf("Could not cast %s to Block", b)
-	}
-
-	return &b, nil
+	return make(), nil
 }

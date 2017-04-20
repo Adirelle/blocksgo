@@ -32,17 +32,22 @@ const (
 	AlignRight  BlockAlign = "right"
 )
 
+// BlockIdentifier uniquely identify a Block
+type BlockIdentifier struct {
+	Name     string `json:"name,omitempty"`
+	Instance string `json:"instance,omitempty"`
+}
+
 // A Block describes a part of the i3bar
 type Block struct {
+	BlockIdentifier     `yaml:",inline"`
 	FullText            string      `json:"full_text"`
 	ShortText           string      `json:"short_text,omitempty"`
 	Color               string      `json:"color,omitempty"`
 	Background          string      `json:"background,omitempty"`
 	Border              string      `json:"border,omitempty"`
-	MinWitdh            string      `json:"min_width,omitempty"`
+	MinWidth            string      `json:"min_width,omitempty"`
 	Align               BlockAlign  `json:"align,omitempty"`
-	Name                string      `json:"name,omitempty"`
-	Instance            string      `json:"instance,omitempty"`
 	Urgent              bool        `json:"urgent,omitempty"`
 	Separator           bool        `json:"separator,omitempty"`
 	SeparatorBlockWidth int         `json:"separator_block_width,omitempty"`
@@ -51,15 +56,14 @@ type Block struct {
 
 // A ClickEvent is sent by i3bar when the user clicks on a block
 type ClickEvent struct {
-	Name     string `json:"name"`
-	Instance string `json:"instance"`
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
-	Button   int    `json:"button"`
+	BlockIdentifier `yaml:",inline"`
+	X               int `json:"x"`
+	Y               int `json:"y"`
+	Button          int `json:"button"`
 }
 
 // The StatusLine is just an list of Blocks
-type StatusLine []*Block
+type StatusLine []Block
 
 // StartIPC creates 2 chans to send statuslines and receive click events.
 func StartIPC(h Header, w io.Writer, r io.Reader) (chan<- StatusLine, <-chan ClickEvent) {
@@ -67,7 +71,7 @@ func StartIPC(h Header, w io.Writer, r io.Reader) (chan<- StatusLine, <-chan Cli
 	statuslines := make(chan StatusLine)
 
 	go writeLoop(h, w, statuslines)
-	statuslines <- make([]*Block, 0)
+	statuslines <- []Block{}
 
 	var events chan ClickEvent
 	if h.ClickEvents {
@@ -99,7 +103,9 @@ func writeLoop(h Header, w io.Writer, s <-chan StatusLine) {
 func writeJSON(w io.Writer, data interface{}) (err error) {
 	var b []byte
 	if b, err = json.Marshal(&data); err == nil {
-		_, err = w.Write(b)
+		if _, err = w.Write(b); err == nil {
+			_, err = w.Write([]byte("\n"))
+		}
 	}
 	return err
 }
@@ -126,4 +132,8 @@ func readLoop(r io.Reader, e chan<- ClickEvent) {
 	if err := s.Err(); err != nil {
 		panic(err)
 	}
+}
+
+func (a BlockIdentifier) Matches(b BlockIdentifier) bool {
+	return a.Name == b.Name && a.Name != "" && a.Instance == b.Instance && a.Instance != ""
 }
