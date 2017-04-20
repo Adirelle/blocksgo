@@ -1,7 +1,6 @@
 package framework
 
 import (
-	"fmt"
 	"io"
 	"reflect"
 	"time"
@@ -15,20 +14,17 @@ type Application struct {
 	Config
 
 	line     ipc.StatusLine
-	ticker   *time.Ticker
 	cases    []reflect.SelectCase
 	handlers []HandlerFunc
 }
 
 func (a *Application) Run(r io.Reader, w io.Writer) {
-	a.start(r, w)
+	output := a.start(r, w)
 
-	a.loop()
+	a.loop(output)
 }
 
-func (a *Application) start(r io.Reader, w io.Writer) {
-	fmt.Printf("%+v\n", a)
-	a.ticker = time.NewTicker(a.Global.Interval)
+func (a *Application) start(r io.Reader, w io.Writer) (output chan<- ipc.StatusLine) {
 	a.line = make([]ipc.Block, len(a.Blocks))
 
 	h := ipc.Header{Version: 1}
@@ -45,7 +41,8 @@ func (a *Application) start(r io.Reader, w io.Writer) {
 		})
 	}
 
-	output, input := ipc.StartIPC(h, w, r)
+	var input <-chan ipc.ClickEvent
+	output, input = ipc.StartIPC(h, w, r)
 
 	if h.ClickEvents {
 		a.addRecvSelect(input, func(v interface{}) {
@@ -53,9 +50,7 @@ func (a *Application) start(r io.Reader, w io.Writer) {
 		})
 	}
 
-	a.addRecvSelect(a.ticker.C, func(_ interface{}) {
-		output <- a.line
-	})
+	return
 }
 
 func (a *Application) addRecvSelect(ch interface{}, h HandlerFunc) {
@@ -76,8 +71,15 @@ func (a *Application) dispatchClick(e ipc.ClickEvent) {
 	}
 }
 
-func (a *Application) loop() {
+func (a *Application) loop(output chan<- ipc.StatusLine) {
+	var lastUpdate time.Time
+
 	for {
+		if now := time.Now(); now.Sub(lastUpdate) >= a.Global.Interval {
+			lastUpdate = now
+			output <- a.line
+		}
+
 		i, v, ok := reflect.Select(a.cases)
 		if !ok {
 			break
