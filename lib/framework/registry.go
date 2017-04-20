@@ -2,6 +2,7 @@ package framework
 
 import "fmt"
 
+// MakeFunc is a function that creates a new Block instance.
 type MakeFunc func() Block
 
 var registry = make(map[string]MakeFunc)

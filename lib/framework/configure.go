@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// GlobalConfig is not related to a Block.
 type GlobalConfig struct {
 	Interval time.Duration `yaml:"interval"`
 }

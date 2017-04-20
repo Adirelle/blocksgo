@@ -8,16 +8,18 @@ import (
 	"github.com/Adirelle/blocksgo/lib/ipc"
 )
 
-type HandlerFunc func(value interface{})
+type handlerFunc func(value interface{})
 
+// Application is the base Struct
 type Application struct {
 	Config
 
 	line     ipc.StatusLine
 	cases    []reflect.SelectCase
-	handlers []HandlerFunc
+	handlers []handlerFunc
 }
 
+// Run runs the configured application, using the givne input and output streams.
 func (a *Application) Run(r io.Reader, w io.Writer) {
 	output := a.start(r, w)
 
@@ -53,7 +55,7 @@ func (a *Application) start(r io.Reader, w io.Writer) (output chan<- ipc.StatusL
 	return
 }
 
-func (a *Application) addRecvSelect(ch interface{}, h HandlerFunc) {
+func (a *Application) addRecvSelect(ch interface{}, h handlerFunc) {
 	c := reflect.SelectCase{
 		Chan: reflect.ValueOf(ch),
 		Dir:  reflect.SelectRecv,
