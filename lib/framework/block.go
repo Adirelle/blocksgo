@@ -9,15 +9,7 @@ type Block interface {
 }
 
 type BaseBlock struct {
-	ipc.BlockIdentifier
-	Color               string          `json:"color"`
-	Background          string          `json:"background"`
-	Border              string          `json:"border"`
-	MinWidth            string          `json:"min_width"`
-	Align               ipc.BlockAlign  `json:"align"`
-	Separator           bool            `json:"separator"`
-	SeparatorBlockWidth int             `json:"separator_block_width"`
-	Markup              ipc.BlockMarkup `json:"markup,omitempty"`
+	ipc.Block `yaml:",inline"`
 
 	ch chan ipc.Block
 }
@@ -28,17 +20,7 @@ func (b *BaseBlock) Start() <-chan ipc.Block {
 }
 
 func (b *BaseBlock) MakeDefaultBlock() ipc.Block {
-	return ipc.Block{
-		BlockIdentifier:     b.BlockIdentifier,
-		Color:               b.Color,
-		Background:          b.Background,
-		Border:              b.Border,
-		MinWidth:            b.MinWidth,
-		Align:               b.Align,
-		Separator:           b.Separator,
-		SeparatorBlockWidth: b.SeparatorBlockWidth,
-		Markup:              b.Markup,
-	}
+	return b.Block
 }
 
 func (b *BaseBlock) Emit(bl ipc.Block) {
