@@ -2,6 +2,7 @@ package modules
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 	"time"
 )
@@ -50,4 +51,43 @@ func (t *TemplatedBlock) Format(data interface{}) string {
 		return err.Error()
 	}
 	return t.buf.String()
+}
+
+//============================================================
+
+type Unit string
+
+const (
+	BYTE Unit = "b"
+	KILO Unit = "k"
+	MEGA Unit = "M"
+	GIGA Unit = "G"
+)
+
+var unitScales = map[Unit]float64{
+	BYTE: 1.0,
+	KILO: float64(1 << 10),
+	MEGA: float64(1 << 20),
+	GIGA: float64(1 << 30),
+}
+
+type UnitFormatter struct {
+	Unit Unit `yaml:"unit"`
+
+	unitScale float64
+}
+
+func (u *UnitFormatter) PrepareUnit() {
+	var found bool
+	if u.unitScale, found = unitScales[u.Unit]; !found {
+		panic(fmt.Errorf("Unit %q unknown", u.Unit))
+	}
+}
+
+func (u *UnitFormatter) FormatUnit(value interface{}) string {
+	if i, ok := value.(uint64); ok {
+		return fmt.Sprintf("%.1f", float64(i)/u.unitScale)
+	} else {
+		return fmt.Sprintf("Cannot cast %q into uint64", value)
+	}
 }
