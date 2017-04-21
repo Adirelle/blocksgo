@@ -1,6 +1,10 @@
 package modules
 
-import "time"
+import (
+	"bytes"
+	"text/template"
+	"time"
+)
 
 //============================================================
 
@@ -24,4 +28,26 @@ func (p *PollingBlock) StartPolling(poll PollFunc) {
 
 func (p *PollingBlock) Stop() {
 	p.ticker.Stop()
+}
+
+//============================================================
+
+type TemplatedBlock struct {
+	Template string `yaml:"template"`
+
+	tpl *template.Template
+	buf bytes.Buffer
+}
+
+func (t *TemplatedBlock) ParseTemplate() {
+	tplName := fmt.Sprintf("%p", t)
+	t.tpl = template.Must(template.New(tplName).Parse(t.Template))
+}
+
+func (t *TemplatedBlock) Format(data interface{}) string {
+	t.buf.Reset()
+	if err := t.tpl.Execute(&t.buf, data); err != nil {
+		return err.Error()
+	}
+	return t.buf.String()
 }
