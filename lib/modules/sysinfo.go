@@ -13,7 +13,7 @@ type Sysinfo struct {
 	framework.BaseBlock `yaml:",inline"`
 	PollingBlock        `yaml:",inline"`
 	TemplatedBlock      `yaml:",inline"`
-	UnitFormatter       `yaml:",inline"`
+	Unit                Unit `yaml:"unit"`
 
 	unix.Sysinfo_t
 	Usedram  uint64
@@ -25,14 +25,13 @@ func init() {
 		b := Sysinfo{}
 		b.Name = "sysinfo"
 		b.Interval = 1 * time.Second
-		b.UnitFormatter.Unit = GIGA
+		b.Unit = GIGA
 		return &b
 	})
 }
 
 func (s *Sysinfo) Start() <-chan ipc.Block {
 	s.ParseTemplate()
-	s.PrepareUnit()
 	s.StartPolling(func(_ time.Time) {
 		b := s.MakeDefaultBlock()
 		if err := unix.Sysinfo(&s.Sysinfo_t); err != nil {

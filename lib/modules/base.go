@@ -71,23 +71,14 @@ var unitScales = map[Unit]float64{
 	GIGA: float64(1 << 30),
 }
 
-type UnitFormatter struct {
-	Unit Unit `yaml:"unit"`
-
-	unitScale float64
-}
-
-func (u *UnitFormatter) PrepareUnit() {
-	var found bool
-	if u.unitScale, found = unitScales[u.Unit]; !found {
-		panic(fmt.Errorf("Unit %q unknown", u.Unit))
-	}
-}
-
-func (u *UnitFormatter) FormatUnit(value interface{}) string {
-	if i, ok := value.(uint64); ok {
-		return fmt.Sprintf("%.1f", float64(i)/u.unitScale)
+func (u Unit) Format(value interface{}) string {
+	if s, ok := unitScales[u]; ok {
+		if i, ok := value.(uint64); ok {
+			return fmt.Sprintf("%.1f", float64(i)/s)
+		} else {
+			return fmt.Sprintf("Cannot cast %q into uint64", value)
+		}
 	} else {
-		return fmt.Sprintf("Cannot cast %q into uint64", value)
+		return fmt.Sprintf("Unit %q unknown", u)
 	}
 }
