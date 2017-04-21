@@ -25,7 +25,7 @@ func init() {
 		b := Sysinfo{}
 		b.Name = "sysinfo"
 		b.Interval = 1 * time.Second
-		b.Unit = GIGA
+		b.Unit = Giga
 		return &b
 	})
 }

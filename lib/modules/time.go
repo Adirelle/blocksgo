@@ -17,7 +17,7 @@ func init() {
 	framework.RegistryBlockType("time", func() framework.Block {
 		b := Time{}
 		b.Name = "time"
-		b.Interval = 5 * time.Second
+		b.Interval = 1 * time.Second
 		b.Format = "2006-01-01 15:04:05 MST"
 		return &b
 	})
