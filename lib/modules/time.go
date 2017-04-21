@@ -1,7 +1,6 @@
 package modules
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/Adirelle/blocksgo/lib/framework"
@@ -14,6 +13,14 @@ type Time struct {
 	Format              string `yaml:"format"`
 }
 
+func init() {
+	framework.RegistryBlockType("time", func() framework.Block {
+		b := Time{}
+		b.Name = "time"
+		b.Interval = 5 * time.Second
+		b.Format = "2006-01-01 15:04:05 MST"
+		return &b
+	})
 }
 
 func (t *Time) Start() <-chan ipc.Block {
@@ -28,8 +35,4 @@ func (t *Time) Start() <-chan ipc.Block {
 func (t *Time) Stop() {
 	t.PollingBlock.Stop()
 	t.BaseBlock.Stop()
-}
-
-func init() {
-	framework.RegistryBlockType("time", func() framework.Block { return &Time{} })
 }
