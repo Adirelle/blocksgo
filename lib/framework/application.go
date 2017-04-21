@@ -2,67 +2,70 @@ package framework
 
 import (
 	"io"
-	"reflect"
 	"time"
 
 	"github.com/Adirelle/blocksgo/lib/ipc"
 )
 
-type handlerFunc func(value interface{})
-
 // Application is the base Struct
 type Application struct {
 	Config
+	Select
 
-	line     ipc.StatusLine
-	cases    []reflect.SelectCase
-	handlers []handlerFunc
+	line   ipc.StatusLine
+	input  <-chan ipc.ClickEvent
+	output chan<- ipc.StatusLine
+	ticker *time.Ticker
 }
 
 // Run runs the configured application, using the givne input and output streams.
 func (a *Application) Run(r io.Reader, w io.Writer) {
-	output := a.start(r, w)
-
-	a.loop(output)
+	a.start(r, w)
+	a.loop()
 }
 
-func (a *Application) start(r io.Reader, w io.Writer) (output chan<- ipc.StatusLine) {
+func (a *Application) start(r io.Reader, w io.Writer) {
 	a.line = make([]ipc.Block, len(a.Blocks))
 
-	h := ipc.Header{Version: 1}
-
-	for i, b := range a.Blocks {
-
-		if _, handlesClicks := b.(ClickableBlock); handlesClicks {
-			h.ClickEvents = true
-		}
-
-		ch := b.Start()
-		a.addRecvSelect(ch, func(value interface{}) {
-			a.line[i] = value.(ipc.Block)
-		})
+	h := ipc.Header{
+		Version:     1,
+		ClickEvents: hasClickableBlocks(a.Blocks),
 	}
-
-	var input <-chan ipc.ClickEvent
-	output, input = ipc.StartIPC(h, w, r)
+	a.output, a.input = ipc.StartIPC(h, w, r)
 
 	if h.ClickEvents {
-		a.addRecvSelect(input, func(v interface{}) {
+		a.OnRecv(a.input, func(v interface{}) {
 			a.dispatchClick(v.(ipc.ClickEvent))
 		})
 	}
 
+	for i, b := range a.Blocks {
+		ch := b.Start()
+		j := i
+		a.OnRecv(ch, func(value interface{}) {
+			a.updateBlock(j, value.(ipc.Block))
+		})
+	}
+
+	a.ticker = time.NewTicker(a.Global.Interval)
+	a.OnRecv(a.ticker.C, func(_ interface{}) {
+		a.output <- a.line
+	})
+
 	return
 }
 
-func (a *Application) addRecvSelect(ch interface{}, h handlerFunc) {
-	c := reflect.SelectCase{
-		Chan: reflect.ValueOf(ch),
-		Dir:  reflect.SelectRecv,
+func hasClickableBlocks(bs []Block) bool {
+	for _, b := range bs {
+		if _, handlesClicks := b.(ClickableBlock); handlesClicks {
+			return true
+		}
 	}
+	return false
+}
 
-	a.cases = append(a.cases, c)
-	a.handlers = append(a.handlers, h)
+func (a *Application) updateBlock(i int, b ipc.Block) {
+	a.line[i] = b
 }
 
 func (a *Application) dispatchClick(e ipc.ClickEvent) {
@@ -73,19 +76,8 @@ func (a *Application) dispatchClick(e ipc.ClickEvent) {
 	}
 }
 
-func (a *Application) loop(output chan<- ipc.StatusLine) {
-	var lastUpdate time.Time
-
-	for {
-		if now := time.Now(); now.Sub(lastUpdate) >= a.Global.Interval {
-			lastUpdate = now
-			output <- a.line
-		}
-
-		i, v, ok := reflect.Select(a.cases)
-		if !ok {
-			break
-		}
-		a.handlers[i](v.Interface())
+func (a *Application) loop() {
+	for a.Select.Run() {
+		// NOOP
 	}
 }
